@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot Interface</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="chat-container">
+        <h1>Chat with Our AI Assistant</h1>
+        <div id="chat-box" class="chat-box">
+            <!-- Chat messages will appear here -->
+        </div>
+        <div id="loading" class="loading">
+            Generating response...
+        </div>
+        <form id="chat-form" class="chat-form">
+            <input type="text" id="user-input" class="user-input" placeholder="Type a message..." required>
+            <button type="submit" class="send-button">Send</button>
+        </form>
+        <!-- Clear Conversation History Button -->
+        <button id="clear-history" class="clear-history">Clear Conversation History</button>
+    </div>
+
+    <script>
+        // Function to append a message to the chat box
+        function appendMessage(message, isAI = false) {
+            const chatBox = document.getElementById('chat-box');
+            const messageElement = document.createElement('div');
+            
+            // Add different classes based on whether the message is from AI or the user
+            messageElement.classList.add('chat-message');
+            if (isAI) {
+                messageElement.classList.add('ai-message');  // AI messages have green background
+            } else {
+                messageElement.classList.add('user-message');  // User messages have light green background
+            }
+
+            messageElement.textContent = message;
+            chatBox.appendChild(messageElement);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        // Async function to handle sending a message to the Flask backend
+        async function sendMessage(userInput) {
+            // Show loading indicator
+            document.getElementById('loading').style.display = 'block';
+
+            try {
+                // Make POST request to Flask backend
+                const response = await fetch('/chatbot', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: userInput })
+                });
+
+                // Check if response is successful
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+
+                // Parse the JSON response from Flask
+                const data = await response.json();
+                // Append AI response to chat
+                appendMessage('AI: ' + data.response, true);  // Pass 'true' for AI messages
+            } catch (error) {
+                console.error('Error:', error);
+                appendMessage('AI: Sorry, there was an error.', true);
+            } finally {
+                // Hide loading indicator after the response
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        // Handle form submission
+        document.getElementById('chat-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const userInput = document.getElementById('user-input').value;
+            if (userInput.trim() === '') return;
+            appendMessage('You: ' + userInput);  // Add 'You' as the label for user input
+            document.getElementById('user-input').value = '';
+
+            // Send the message to the Flask backend using async function
+            sendMessage(userInput);
+        });
+
+        // Clear conversation history functionality
+        document.getElementById('clear-history').addEventListener('click', function() {
+            // Clear chat box content
+            const chatBox = document.getElementById('chat-box');
+            chatBox.innerHTML = '';
+
+            // Optionally reset the conversation history array on the backend by calling the Flask endpoint
+            fetch('/clear_conversation', {
+                method: 'POST'
+            });
+        });
+    </script>
+</body>
+</html>
